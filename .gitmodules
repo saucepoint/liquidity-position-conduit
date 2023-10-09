@@ -4,3 +4,6 @@
 [submodule "lib/dss-allocator"]
 	path = lib/dss-allocator
 	url = https://github.com/makerdao/dss-allocator
+[submodule "lib/bungi"]
+	path = lib/bungi
+	url = https://github.com/saucepoint/bungi
