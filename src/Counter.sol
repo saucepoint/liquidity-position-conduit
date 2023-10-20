@@ -7,17 +7,7 @@ import {ProvisionerV4} from "./ProvisionerV4.sol";
 import {LiquidityPositionManager} from "bungi/LiquidityPositionManager.sol";
 
 contract Counter is IAllocatorConduit, ProvisionerV4 {
-    uint256 public number;
-
     constructor(LiquidityPositionManager _lpm) ProvisionerV4(_lpm) {}
-
-    function setNumber(uint256 newNumber) public {
-        number = newNumber;
-    }
-
-    function increment() public {
-        number++;
-    }
 
     function deposit(bytes32 ilk, address asset, uint256 amount) external override {
         IERC20(asset).transferFrom(msg.sender, address(this), amount);
