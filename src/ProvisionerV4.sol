@@ -10,6 +10,8 @@ import {Position, PositionId, PositionIdLibrary} from "bungi/types/PositionId.so
 import {IERC20} from "forge-std/interfaces/IERC20.sol";
 
 contract ProvisionerV4 {
+    using PositionIdLibrary for Position;
+
     LiquidityPositionManager public immutable lpm;
 
     constructor(LiquidityPositionManager _lpm) {
@@ -29,6 +31,33 @@ contract ProvisionerV4 {
                 tickLower: position.tickLower,
                 tickUpper: position.tickUpper,
                 liquidityDelta: int256(liquidity)
+            }),
+            hookData
+        );
+    }
+
+    function closePosition(Position calldata position, uint256 liquidity, bytes calldata hookData) external {
+        lpm.modifyPosition(
+            address(this),
+            position.poolKey,
+            IPoolManager.ModifyPositionParams({
+                tickLower: position.tickLower,
+                tickUpper: position.tickUpper,
+                liquidityDelta: -int256(liquidity)
+            }),
+            hookData
+        );
+    }
+
+    function closeAll(Position calldata position, bytes calldata hookData) external {
+        // TODO: bookkeep token1 providers, and return the tokens proportionally
+        lpm.modifyPosition(
+            address(this),
+            position.poolKey,
+            IPoolManager.ModifyPositionParams({
+                tickLower: position.tickLower,
+                tickUpper: position.tickUpper,
+                liquidityDelta: -int256(lpm.balanceOf(address(this), position.toTokenId()))
             }),
             hookData
         );

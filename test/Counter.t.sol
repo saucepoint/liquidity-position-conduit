@@ -60,12 +60,54 @@ contract CounterTest is HookTest {
         token1.approve(address(counter), 1_000_000e18);
 
         Position memory position = Position({poolKey: poolKey, tickLower: -600, tickUpper: 600});
-        uint128 liquidity = 100e18;
-        uint256 token1Amount = LiquidityAmounts.getAmount1ForLiquidity(
-            TickMath.getSqrtRatioAtTick(position.tickLower), TickMath.getSqrtRatioAtTick(position.tickUpper), liquidity
+        (, int24 currentTick,,) = manager.getSlot0(poolId);
+        uint256 liq = LiquidityAmounts.getLiquidityForAmounts(
+            TickMath.getSqrtRatioAtTick(currentTick),
+            TickMath.getSqrtRatioAtTick(position.tickLower),
+            TickMath.getSqrtRatioAtTick(position.tickUpper),
+            DAI.balanceOf(address(counter)),
+            token1.balanceOf(address(alice))
         );
-        counter.createPosition(position, token1Amount, uint256(liquidity), ZERO_BYTES);
+        counter.createPosition(position, token1.balanceOf(address(alice)), uint256(liq), ZERO_BYTES);
+
+        // all of the DAI was used
+        assertEq(DAI.balanceOf(address(counter)), 0);
 
         vm.stopPrank();
+    }
+
+    // Test withdrawals work when LPs are forcibly closed
+    function test_withdraw_lpClose() public {
+        // supply DAI to the conduit
+        uint256 DAI_SUPPLIED = 10_000e18;
+        DAI.approve(address(counter), DAI_SUPPLIED);
+        counter.deposit(allocDAO, address(DAI), DAI_SUPPLIED);
+
+        // alice creates a position by using the DAI in the conduit
+        vm.startPrank(alice);
+        token1.approve(address(counter), 1_000_000e18);
+
+        Position memory position = Position({poolKey: poolKey, tickLower: -600, tickUpper: 600});
+        (, int24 currentTick,,) = manager.getSlot0(poolId);
+        uint256 liq = LiquidityAmounts.getLiquidityForAmounts(
+            TickMath.getSqrtRatioAtTick(currentTick),
+            TickMath.getSqrtRatioAtTick(position.tickLower),
+            TickMath.getSqrtRatioAtTick(position.tickUpper),
+            DAI.balanceOf(address(counter)),
+            token1.balanceOf(address(alice))
+        );
+        counter.createPosition(position, token1.balanceOf(address(alice)), uint256(liq), ZERO_BYTES);
+        vm.stopPrank();
+
+        // cant withdraw without closing the LPs
+        vm.expectRevert();
+        counter.withdraw(allocDAO, address(DAI), DAI_SUPPLIED);
+
+        // close the LP
+        counter.closeAll(position, ZERO_BYTES);
+
+        // DAI is withdrawable, TODO: look into the off-by-1-wei error
+        counter.withdraw(allocDAO, address(DAI), DAI_SUPPLIED - 1);
+        assertEq(DAI.balanceOf(address(counter)), 0);
     }
 }

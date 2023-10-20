@@ -15,18 +15,19 @@ contract Counter is IAllocatorConduit, ProvisionerV4 {
     }
 
     function withdraw(bytes32 ilk, address asset, uint256 maxAmount) external override returns (uint256 amount) {
-        // limit to DAI only
+        // TODO: assume all assets are recoverable
+        amount = maxAmount;
+        IERC20(asset).transfer(msg.sender, maxAmount);
         emit Withdraw(ilk, asset, msg.sender, maxAmount);
-        return maxAmount;
     }
 
     function maxDeposit(bytes32 ilk, address asset) external view override returns (uint256 maxDeposit_) {
-        // limit to DAI only
-        return IERC20(asset).balanceOf(address(this));
+        // TODO: enforce limits
+        return type(uint256).max;
     }
 
     function maxWithdraw(bytes32 ilk, address asset) external view override returns (uint256 maxWithdraw_) {
-        // limit to DAI only
-        return IERC20(asset).balanceOf(address(this));
+        // TODO: enforce limits, based on LP holdings
+        return type(uint256).max;
     }
 }
