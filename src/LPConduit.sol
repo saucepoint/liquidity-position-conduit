@@ -6,7 +6,7 @@ import {IAllocatorConduit} from "dss-allocator/src/IAllocatorConduit.sol";
 import {ProvisionerV4} from "./ProvisionerV4.sol";
 import {LiquidityPositionManager} from "bungi/LiquidityPositionManager.sol";
 
-contract Counter is IAllocatorConduit, ProvisionerV4 {
+contract LPConduit is IAllocatorConduit, ProvisionerV4 {
     constructor(LiquidityPositionManager _lpm) ProvisionerV4(_lpm) {}
 
     function deposit(bytes32 ilk, address asset, uint256 amount) external override {

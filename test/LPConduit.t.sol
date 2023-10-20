@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 import {console2} from "forge-std/Test.sol";
 import {HookTest} from "./utils/HookTest.sol";
-import {Counter} from "../src/Counter.sol";
+import {LPConduit} from "../src/LPConduit.sol";
 import {IERC20} from "forge-std/interfaces/IERC20.sol";
 
 import {IHooks} from "@uniswap/v4-core/contracts/interfaces/IHooks.sol";
@@ -17,13 +17,13 @@ import {Position, PositionId, PositionIdLibrary} from "bungi/types/PositionId.so
 import {LiquidityAmounts} from "v4-periphery/libraries/LiquidityAmounts.sol";
 import {TickMath} from "@uniswap/v4-core/contracts/libraries/TickMath.sol";
 
-contract CounterTest is HookTest {
+contract LPConduitTest is HookTest {
     using PoolIdLibrary for PoolKey;
     using CurrencyLibrary for Currency;
     using PositionIdLibrary for Position;
 
     LiquidityPositionManager lpm;
-    Counter counter;
+    LPConduit conduit;
     PoolKey poolKey;
     PoolId poolId;
     IERC20 DAI;
@@ -35,8 +35,8 @@ contract CounterTest is HookTest {
     function setUp() public {
         HookTest.initHookTestEnv();
         lpm = new LiquidityPositionManager(IPoolManager(address(manager)));
-        counter = new Counter(lpm);
-        counter.approvePair(address(token0), address(token1));
+        conduit = new LPConduit(lpm);
+        conduit.approvePair(address(token0), address(token1));
 
         DAI = IERC20(address(token0));
 
@@ -52,12 +52,12 @@ contract CounterTest is HookTest {
 
     function test_lpCreate() public {
         // supply DAI to the conduit
-        DAI.approve(address(counter), 10_000e18);
-        counter.deposit(allocDAO, address(DAI), 10_000e18);
+        DAI.approve(address(conduit), 10_000e18);
+        conduit.deposit(allocDAO, address(DAI), 10_000e18);
 
         // alice creates a position by using the DAI in the conduit
         vm.startPrank(alice);
-        token1.approve(address(counter), 1_000_000e18);
+        token1.approve(address(conduit), 1_000_000e18);
 
         Position memory position = Position({poolKey: poolKey, tickLower: -600, tickUpper: 600});
         (, int24 currentTick,,) = manager.getSlot0(poolId);
@@ -65,13 +65,13 @@ contract CounterTest is HookTest {
             TickMath.getSqrtRatioAtTick(currentTick),
             TickMath.getSqrtRatioAtTick(position.tickLower),
             TickMath.getSqrtRatioAtTick(position.tickUpper),
-            DAI.balanceOf(address(counter)),
+            DAI.balanceOf(address(conduit)),
             token1.balanceOf(address(alice))
         );
-        counter.createPosition(position, token1.balanceOf(address(alice)), uint256(liq), ZERO_BYTES);
+        conduit.createPosition(position, token1.balanceOf(address(alice)), uint256(liq), ZERO_BYTES);
 
         // all of the DAI was used
-        assertEq(DAI.balanceOf(address(counter)), 0);
+        assertEq(DAI.balanceOf(address(conduit)), 0);
 
         vm.stopPrank();
     }
@@ -80,12 +80,12 @@ contract CounterTest is HookTest {
     function test_withdraw_lpClose() public {
         // supply DAI to the conduit
         uint256 DAI_SUPPLIED = 10_000e18;
-        DAI.approve(address(counter), DAI_SUPPLIED);
-        counter.deposit(allocDAO, address(DAI), DAI_SUPPLIED);
+        DAI.approve(address(conduit), DAI_SUPPLIED);
+        conduit.deposit(allocDAO, address(DAI), DAI_SUPPLIED);
 
         // alice creates a position by using the DAI in the conduit
         vm.startPrank(alice);
-        token1.approve(address(counter), 1_000_000e18);
+        token1.approve(address(conduit), 1_000_000e18);
 
         Position memory position = Position({poolKey: poolKey, tickLower: -600, tickUpper: 600});
         (, int24 currentTick,,) = manager.getSlot0(poolId);
@@ -93,21 +93,21 @@ contract CounterTest is HookTest {
             TickMath.getSqrtRatioAtTick(currentTick),
             TickMath.getSqrtRatioAtTick(position.tickLower),
             TickMath.getSqrtRatioAtTick(position.tickUpper),
-            DAI.balanceOf(address(counter)),
+            DAI.balanceOf(address(conduit)),
             token1.balanceOf(address(alice))
         );
-        counter.createPosition(position, token1.balanceOf(address(alice)), uint256(liq), ZERO_BYTES);
+        conduit.createPosition(position, token1.balanceOf(address(alice)), uint256(liq), ZERO_BYTES);
         vm.stopPrank();
 
         // cant withdraw without closing the LPs
         vm.expectRevert();
-        counter.withdraw(allocDAO, address(DAI), DAI_SUPPLIED);
+        conduit.withdraw(allocDAO, address(DAI), DAI_SUPPLIED);
 
         // close the LP
-        counter.closeAll(position, ZERO_BYTES);
+        conduit.closeAll(position, ZERO_BYTES);
 
         // DAI is withdrawable, TODO: look into the off-by-1-wei error
-        counter.withdraw(allocDAO, address(DAI), DAI_SUPPLIED - 1);
-        assertEq(DAI.balanceOf(address(counter)), 0);
+        conduit.withdraw(allocDAO, address(DAI), DAI_SUPPLIED - 1);
+        assertEq(DAI.balanceOf(address(conduit)), 0);
     }
 }
