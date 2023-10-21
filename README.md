@@ -31,6 +31,7 @@ liquidity-position-conduit
 
 ## Examples Usage
 
+DAI allocation and LP Creation
 ```solidity
 // supply DAI to the conduit
 DAI.approve(address(conduit), 10_000e18);
@@ -59,6 +60,8 @@ uint256 liq = LiquidityAmounts.getLiquidityForAmounts(
 conduit.createPosition(position, token1.balanceOf(address(alice)), uint256(liq), ZERO_BYTES);
 ```
 
+
+Reclaim DAI by closing LPs
 ```solidity
 // ... assume the LP has been created
 Position memory position = Position({poolKey: poolKey, tickLower: -600, tickUpper: 600});
